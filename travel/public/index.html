@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>경주문화관광 카페 및 찻집</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>☕ 경주시 카페 및 찻집 안내</h1>
+      <p>경주의 아름다운 카페들을 찾아보세요.</p>
+    </header>
+
+    <div id="loading" class="loading">데이터를 불러오는 중입니다...</div>
+    <ul id="cafe-list" class="cafe-list"></ul>
+  </div>
+
+  <script>
+    async function fetchCafes() {
+      const loading = document.getElementById('loading');
+      const listContainer = document.getElementById('cafe-list');
+
+      try {
+        // 백엔드(Cloudflare Function)로 요청
+        const response = await fetch('/api/cafes?pageNo=1&numOfRows=20');
+        const data = await response.json();
+
+        loading.style.display = 'none';
+
+        // 공공데이터 JSON 구조에 따라 응답값 경로 수정이 필요할 수 있습니다.
+        // 일반적으로 response.body.items.item 에 배열 형태로 들어있습니다.
+        const items = data?.response?.body?.items?.item || [];
+
+        if (items.length === 0) {
+          listContainer.innerHTML = '<li>카페 정보가 없습니다.</li>';
+          return;
+        }
+
+        items.forEach(cafe => {
+          const li = document.createElement('li');
+          li.className = 'cafe-item';
+          li.innerHTML = `
+            <h2>${cafe.tsmNmLc || cafe.title || '카페 이름 없음'}</h2>
+            <p><strong>주소:</strong> ${cafe.adres || cafe.addr1 || '주소 정보 없음'}</p>
+            <p><strong>연락처:</strong> ${cafe.telNo || cafe.tel || '연락처 정보 없음'}</p>
+          `;
+          listContainer.appendChild(li);
+        });
+
+      } catch (error) {
+        loading.textContent = '데이터를 불러오는데 실패했습니다.';
+        console.error("API Fetch Error:", error);
+      }
+    }
+
+    // 페이지 로드 시 실행
+    document.addEventListener('DOMContentLoaded', fetchCafes);
+  </script>
+</body>
+</html>
