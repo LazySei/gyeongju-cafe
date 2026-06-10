@@ -9,20 +9,53 @@
             font-family: 'Malgun Gothic', sans-serif; 
             padding: 20px; 
             background-color: #f4f4f9; 
-            max-width: 1200px; /* 2개씩 보이도록 최대 너비 확장 */
+            max-width: 1200px; 
             margin: 0 auto; 
         }
         
-        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
 
-        /* 💡 1. 한 줄에 2개씩 배치하는 Grid 레이아웃 */
+        /* 💡 검색창 스타일 추가 */
+        .search-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            gap: 10px;
+        }
+        .search-input {
+            padding: 12px 20px;
+            font-size: 1em;
+            width: 100%;
+            max-width: 400px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus { border-color: #3498db; }
+        .search-btn {
+            padding: 12px 24px;
+            font-size: 1em;
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .search-btn:hover { background-color: #1a252f; }
+
+        /* 상태 메시지 (로딩, 결과 없음 등) */
+        #status-message { text-align: center; font-size: 1.1em; color: #666; margin-bottom: 20px; }
+
+        /* Grid 레이아웃 (2개씩 배치) */
         #cafe-list {
             display: grid;
-            grid-template-columns: repeat(2, 1fr); /* 2열 배치 */
-            gap: 20px; /* 카드 사이 간격 */
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 20px; 
         }
 
-        /* 카드 내부를 Flexbox로 구성하여 버튼이 항상 바닥에 오도록 설정 */
         .cafe-card { 
             background: white; 
             padding: 20px; 
@@ -34,38 +67,20 @@
             box-sizing: border-box;
         }
         
-        /* 💡 2. 이미지 사이즈를 완벽하게 동일하게 맞춤 */
+        /* 이미지 사이즈 고정 */
         .cafe-img { 
             width: 100%; 
-            height: 250px; /* 모든 이미지를 250px 높이로 고정 */
-            object-fit: cover; /* 비율을 유지하면서 여백 없이 꽉 채움 (잘림 허용) */
+            height: 250px; 
+            object-fit: cover; 
             border-radius: 8px; 
             margin-bottom: 15px; 
-            background-color: #eee; /* 이미지 로딩 전 배경색 */
+            background-color: #eee; 
         }
 
         .cafe-name { font-size: 1.4em; font-weight: bold; color: #2c3e50; margin-bottom: 8px; }
         .cafe-addr { color: #7f8c8d; font-size: 0.95em; margin-bottom: 10px; }
-        
-        .cafe-summary { 
-            margin-top: 10px; 
-            font-size: 0.9em; 
-            color: #444; 
-            background: #f8f9fa; 
-            padding: 12px; 
-            border-radius: 6px; 
-            line-height: 1.5; 
-        }
-        
-        .cafe-content { 
-            margin-top: 15px; 
-            font-size: 0.95em; 
-            color: #333; 
-            line-height: 1.6; 
-            border-top: 1px dashed #eee; 
-            padding-top: 15px; 
-            flex-grow: 1; /* 남은 공간을 모두 차지하게 하여 버튼을 바닥으로 밀어냄 */
-        }
+        .cafe-summary { margin-top: 10px; font-size: 0.9em; color: #444; background: #f8f9fa; padding: 12px; border-radius: 6px; line-height: 1.5; }
+        .cafe-content { margin-top: 15px; font-size: 0.95em; color: #333; line-height: 1.6; border-top: 1px dashed #eee; padding-top: 15px; flex-grow: 1; }
         
         .cafe-link { 
             display: block; 
@@ -82,55 +97,114 @@
         }
         .cafe-link:hover { background-color: #2980b9; }
 
-        /* 💡 스마트폰 등 작은 화면에서는 자동으로 1줄에 1개씩 보이도록 반응형 처리 */
         @media (max-width: 768px) {
-            #cafe-list {
-                grid-template-columns: 1fr; /* 1열 배치 */
-            }
+            #cafe-list { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <h1>☕ 경주시 카페 및 찻집 안내</h1>
-    <div id="cafe-list">데이터를 불러오는 중입니다...</div>
+    
+    <!-- 💡 검색창 UI -->
+    <div class="search-container">
+        <input type="text" id="search-input" class="search-input" placeholder="카페 이름을 검색해 보세요 (예: 스타벅스)">
+        <button id="search-btn" class="search-btn">검색</button>
+    </div>
+
+    <div id="status-message">데이터를 불러오는 중입니다...</div>
+    <div id="cafe-list"></div>
 
     <script>
+        let allCafes = []; // 전체 카페 데이터를 저장할 전역 변수
+
+        // 1. 서버에서 데이터 가져오기 (최초 1회만 실행)
         async function loadCafes() {
             try {
                 const response = await fetch('/api/cafes');
                 const data = await response.json();
                 
-                const items = data.response?.body?.items?.item || [];
-                const listDiv = document.getElementById('cafe-list');
-                listDiv.innerHTML = '';
-
-                if (items.length === 0) {
-                    listDiv.innerHTML = '<p>조회된 데이터가 없습니다.</p>';
+                // 전체 데이터를 allCafes 배열에 저장
+                allCafes = data.response?.body?.items?.item || [];
+                
+                if (allCafes.length === 0) {
+                    document.getElementById('status-message').innerText = '조회된 데이터가 없습니다.';
                     return;
                 }
 
-                items.forEach(cafe => {
-                    const div = document.createElement('div');
-                    div.className = 'cafe-card';
-                    
-                    div.innerHTML = `
-                        ${cafe.CON_IMGFILENAME ? `<img src="${cafe.CON_IMGFILENAME}" alt="${cafe.CON_TITLE}" class="cafe-img" onerror="this.style.display='none'">` : ''}
-                        <div class="cafe-name">${cafe.CON_TITLE || '이름 없음'}</div>
-                        <div class="cafe-addr">📍 ${cafe.CON_ADDRESS || '주소 정보 없음'}</div>
-                        
-                        ${cafe.CON_SUMMARY ? `<div class="cafe-summary">${cafe.CON_SUMMARY}</div>` : ''}
-                        
-                        ${cafe.CON_CONTENT ? `<div class="cafe-content">${cafe.CON_CONTENT}</div>` : '<div class="cafe-content"></div>'}
-                        
-                        ${cafe.CON_HOMEPAGE ? `<a href="${cafe.CON_HOMEPAGE}" target="_blank" class="cafe-link">🌐 홈페이지 방문하기</a>` : ''}
-                    `;
-                    listDiv.appendChild(div);
-                });
+                // 최초 화면에는 전체 데이터 중 앞의 10개만 표시
+                renderCafes(allCafes);
+
             } catch (error) {
-                document.getElementById('cafe-list').innerText = '데이터를 불러오는데 실패했습니다.';
+                document.getElementById('status-message').innerText = '데이터를 불러오는데 실패했습니다.';
                 console.error(error);
             }
         }
+
+        // 2. 화면에 카페 카드를 그려주는 함수 (최대 10개)
+        function renderCafes(cafeArray) {
+            const listDiv = document.getElementById('cafe-list');
+            const statusMsg = document.getElementById('status-message');
+            listDiv.innerHTML = '';
+
+            if (cafeArray.length === 0) {
+                statusMsg.innerText = '검색 결과가 없습니다.';
+                return;
+            }
+
+            // 💡 배열을 최대 10개까지만 자르기
+            const displayCafes = cafeArray.slice(0, 10);
+            
+            statusMsg.innerText = `총 ${cafeArray.length}개의 카페 중 ${displayCafes.length}개를 보여줍니다.`;
+
+            displayCafes.forEach(cafe => {
+                const div = document.createElement('div');
+                div.className = 'cafe-card';
+                
+                div.innerHTML = `
+                    ${cafe.CON_IMGFILENAME ? `<img src="${cafe.CON_IMGFILENAME}" alt="${cafe.CON_TITLE}" class="cafe-img" onerror="this.style.display='none'">` : ''}
+                    <div class="cafe-name">${cafe.CON_TITLE || '이름 없음'}</div>
+                    <div class="cafe-addr">📍 ${cafe.CON_ADDRESS || '주소 정보 없음'}</div>
+                    
+                    ${cafe.CON_SUMMARY ? `<div class="cafe-summary">${cafe.CON_SUMMARY}</div>` : ''}
+                    
+                    ${cafe.CON_CONTENT ? `<div class="cafe-content">${cafe.CON_CONTENT}</div>` : '<div class="cafe-content"></div>'}
+                    
+                    ${cafe.CON_HOMEPAGE ? `<a href="${cafe.CON_HOMEPAGE}" target="_blank" class="cafe-link">🌐 홈페이지 방문하기</a>` : ''}
+                `;
+                listDiv.appendChild(div);
+            });
+        }
+
+        // 3. 검색 기능 구현
+        function searchCafes() {
+            const keyword = document.getElementById('search-input').value.trim().toLowerCase();
+            
+            if (keyword === '') {
+                // 검색어가 없으면 전체 데이터 다시 보여주기 (10개 제한 적용)
+                renderCafes(allCafes);
+                return;
+            }
+
+            // 카페 이름(CON_TITLE)에 검색어가 포함된 항목만 필터링
+            const filteredCafes = allCafes.filter(cafe => {
+                const title = cafe.CON_TITLE ? cafe.CON_TITLE.toLowerCase() : '';
+                return title.includes(keyword);
+            });
+
+            renderCafes(filteredCafes);
+        }
+
+        // 검색 버튼 클릭 이벤트
+        document.getElementById('search-btn').addEventListener('click', searchCafes);
+
+        // 엔터 키 입력 시 검색 실행
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchCafes();
+            }
+        });
+
+        // 페이지 로드 시 최초 실행
         loadCafes();
     </script>
 </body>
