@@ -15,7 +15,7 @@
         
         h1 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
 
-        /* 💡 검색창 스타일 추가 */
+        /* 검색창 스타일 */
         .search-container {
             display: flex;
             justify-content: center;
@@ -46,10 +46,9 @@
         }
         .search-btn:hover { background-color: #1a252f; }
 
-        /* 상태 메시지 (로딩, 결과 없음 등) */
         #status-message { text-align: center; font-size: 1.1em; color: #666; margin-bottom: 20px; }
 
-        /* Grid 레이아웃 (2개씩 배치) */
+        /* 카페 리스트 Grid */
         #cafe-list {
             display: grid;
             grid-template-columns: repeat(2, 1fr); 
@@ -67,16 +66,7 @@
             box-sizing: border-box;
         }
         
-        /* 이미지 사이즈 고정 */
-        .cafe-img { 
-            width: 100%; 
-            height: 250px; 
-            object-fit: cover; 
-            border-radius: 8px; 
-            margin-bottom: 15px; 
-            background-color: #eee; 
-        }
-
+        .cafe-img { width: 100%; height: 250px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; background-color: #eee; }
         .cafe-name { font-size: 1.4em; font-weight: bold; color: #2c3e50; margin-bottom: 8px; }
         .cafe-addr { color: #7f8c8d; font-size: 0.95em; margin-bottom: 10px; }
         .cafe-summary { margin-top: 10px; font-size: 0.9em; color: #444; background: #f8f9fa; padding: 12px; border-radius: 6px; line-height: 1.5; }
@@ -97,6 +87,39 @@
         }
         .cafe-link:hover { background-color: #2980b9; }
 
+        /* 💡 페이지네이션 스타일 추가 */
+        #pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .page-btn {
+            padding: 8px 14px;
+            border: 1px solid #ddd;
+            background-color: white;
+            color: #333;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: all 0.2s;
+        }
+        .page-btn:hover:not(:disabled) { background-color: #f4f4f9; }
+        .page-btn.active {
+            background-color: #3498db;
+            color: white;
+            border-color: #3498db;
+            font-weight: bold;
+        }
+        .page-btn:disabled {
+            color: #bbb;
+            cursor: not-allowed;
+            background-color: #f9f9f9;
+        }
+
         @media (max-width: 768px) {
             #cafe-list { grid-template-columns: 1fr; }
         }
@@ -105,7 +128,6 @@
 <body>
     <h1>☕ 경주시 카페 및 찻집 안내</h1>
     
-    <!-- 💡 검색창 UI -->
     <div class="search-container">
         <input type="text" id="search-input" class="search-input" placeholder="카페 이름을 검색해 보세요 (예: 스타벅스)">
         <button id="search-btn" class="search-btn">검색</button>
@@ -113,26 +135,32 @@
 
     <div id="status-message">데이터를 불러오는 중입니다...</div>
     <div id="cafe-list"></div>
+    
+    <!-- 💡 페이지네이션 버튼이 들어갈 영역 -->
+    <div id="pagination"></div>
 
     <script>
-        let allCafes = []; // 전체 카페 데이터를 저장할 전역 변수
+        let allCafes = [];             // 전체 데이터를 저장
+        let currentFilteredCafes = []; // 검색된(또는 전체) 현재 상태의 데이터
+        let currentPage = 1;           // 현재 보고 있는 페이지 번호
+        const itemsPerPage = 10;       // 한 페이지당 보여줄 개수
 
-        // 1. 서버에서 데이터 가져오기 (최초 1회만 실행)
+        // 1. 서버에서 데이터 가져오기
         async function loadCafes() {
             try {
                 const response = await fetch('/api/cafes');
                 const data = await response.json();
                 
-                // 전체 데이터를 allCafes 배열에 저장
                 allCafes = data.response?.body?.items?.item || [];
+                currentFilteredCafes = [...allCafes]; // 초기에는 전체 데이터를 현재 목록으로 설정
                 
                 if (allCafes.length === 0) {
                     document.getElementById('status-message').innerText = '조회된 데이터가 없습니다.';
                     return;
                 }
 
-                // 최초 화면에는 전체 데이터 중 앞의 10개만 표시
-                renderCafes(allCafes);
+                // 1페이지 렌더링
+                renderPage(1);
 
             } catch (error) {
                 document.getElementById('status-message').innerText = '데이터를 불러오는데 실패했습니다.';
@@ -140,22 +168,30 @@
             }
         }
 
-        // 2. 화면에 카페 카드를 그려주는 함수 (최대 10개)
-        function renderCafes(cafeArray) {
+        // 2. 특정 페이지의 10개 카드만 화면에 그리기
+        function renderPage(page) {
+            currentPage = page;
+            
             const listDiv = document.getElementById('cafe-list');
             const statusMsg = document.getElementById('status-message');
             listDiv.innerHTML = '';
 
-            if (cafeArray.length === 0) {
+            if (currentFilteredCafes.length === 0) {
                 statusMsg.innerText = '검색 결과가 없습니다.';
+                document.getElementById('pagination').innerHTML = ''; // 페이지 버튼 숨기기
                 return;
             }
 
-            // 💡 배열을 최대 10개까지만 자르기
-            const displayCafes = cafeArray.slice(0, 10);
+            // 배열에서 현재 페이지에 해당하는 10개만 자르기
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const displayCafes = currentFilteredCafes.slice(startIndex, endIndex);
             
-            statusMsg.innerText = `총 ${cafeArray.length}개의 카페 중 ${displayCafes.length}개를 보여줍니다.`;
+            // 상태 메시지 업데이트
+            const actualEndIndex = Math.min(endIndex, currentFilteredCafes.length);
+            statusMsg.innerText = `총 ${currentFilteredCafes.length}개의 카페 중 ${startIndex + 1} ~ ${actualEndIndex}번째를 보여줍니다.`;
 
+            // 카드 생성
             displayCafes.forEach(cafe => {
                 const div = document.createElement('div');
                 div.className = 'cafe-card';
@@ -164,47 +200,83 @@
                     ${cafe.CON_IMGFILENAME ? `<img src="${cafe.CON_IMGFILENAME}" alt="${cafe.CON_TITLE}" class="cafe-img" onerror="this.style.display='none'">` : ''}
                     <div class="cafe-name">${cafe.CON_TITLE || '이름 없음'}</div>
                     <div class="cafe-addr">📍 ${cafe.CON_ADDRESS || '주소 정보 없음'}</div>
-                    
                     ${cafe.CON_SUMMARY ? `<div class="cafe-summary">${cafe.CON_SUMMARY}</div>` : ''}
-                    
                     ${cafe.CON_CONTENT ? `<div class="cafe-content">${cafe.CON_CONTENT}</div>` : '<div class="cafe-content"></div>'}
-                    
                     ${cafe.CON_HOMEPAGE ? `<a href="${cafe.CON_HOMEPAGE}" target="_blank" class="cafe-link">🌐 홈페이지 방문하기</a>` : ''}
                 `;
                 listDiv.appendChild(div);
             });
+
+            // 💡 페이지네이션 버튼 그리기
+            renderPagination();
+            
+            // 페이지 이동 시 부드럽게 화면 위로 올리기
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // 3. 검색 기능 구현
+        // 3. 하단 페이지 이동 버튼(이전, 다음, 번호) 생성
+        function renderPagination() {
+            const paginationDiv = document.getElementById('pagination');
+            paginationDiv.innerHTML = '';
+            
+            const totalPages = Math.ceil(currentFilteredCafes.length / itemsPerPage);
+            if (totalPages <= 1) return; // 1페이지 이하면 버튼 숨김
+
+            // [이전] 버튼
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'page-btn';
+            prevBtn.innerText = '이전';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => renderPage(currentPage - 1);
+            paginationDiv.appendChild(prevBtn);
+
+            // [페이지 번호] 버튼 (모바일 화면을 고려해 현재 페이지 기준 앞뒤 2개씩, 최대 5개 노출)
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, currentPage + 2);
+            
+            if (currentPage <= 2) endPage = Math.min(totalPages, 5);
+            if (currentPage >= totalPages - 1) startPage = Math.max(1, totalPages - 4);
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                pageBtn.innerText = i;
+                pageBtn.onclick = () => renderPage(i);
+                paginationDiv.appendChild(pageBtn);
+            }
+
+            // [다음] 버튼
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'page-btn';
+            nextBtn.innerText = '다음';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => renderPage(currentPage + 1);
+            paginationDiv.appendChild(nextBtn);
+        }
+
+        // 4. 검색 기능
         function searchCafes() {
             const keyword = document.getElementById('search-input').value.trim().toLowerCase();
             
             if (keyword === '') {
-                // 검색어가 없으면 전체 데이터 다시 보여주기 (10개 제한 적용)
-                renderCafes(allCafes);
-                return;
+                currentFilteredCafes = [...allCafes]; // 검색어 없으면 전체 데이터로 복구
+            } else {
+                currentFilteredCafes = allCafes.filter(cafe => {
+                    const title = cafe.CON_TITLE ? cafe.CON_TITLE.toLowerCase() : '';
+                    return title.includes(keyword);
+                });
             }
 
-            // 카페 이름(CON_TITLE)에 검색어가 포함된 항목만 필터링
-            const filteredCafes = allCafes.filter(cafe => {
-                const title = cafe.CON_TITLE ? cafe.CON_TITLE.toLowerCase() : '';
-                return title.includes(keyword);
-            });
-
-            renderCafes(filteredCafes);
+            // 검색 후에는 무조건 1페이지로 돌아가기
+            renderPage(1);
         }
 
-        // 검색 버튼 클릭 이벤트
         document.getElementById('search-btn').addEventListener('click', searchCafes);
-
-        // 엔터 키 입력 시 검색 실행
         document.getElementById('search-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                searchCafes();
-            }
+            if (e.key === 'Enter') searchCafes();
         });
 
-        // 페이지 로드 시 최초 실행
+        // 시작
         loadCafes();
     </script>
 </body>
