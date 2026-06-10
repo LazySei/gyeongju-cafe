@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>경주시 카페 및 찻집 정보</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; background-color: #f4f4f9; }
+        .cafe-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .cafe-name { font-size: 1.2em; font-weight: bold; color: #333; }
+        .cafe-addr { color: #666; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <h1>☕ 경주시 카페 및 찻집 안내</h1>
+    <div id="cafe-list">데이터를 불러오는 중입니다...</div>
+
+    <script>
+        async function loadCafes() {
+            try {
+                // Cloudflare Functions로 만든 내부 API 호출
+                const response = await fetch('/api/cafes');
+                const data = await response.json();
+                
+                // 공공데이터 JSON 구조에 맞게 수정 필요 (일반적인 공공데이터 포맷 기준)
+                const items = data.response?.body?.items?.item || [];
+                const listDiv = document.getElementById('cafe-list');
+                listDiv.innerHTML = '';
+
+                if (items.length === 0) {
+                    listDiv.innerHTML = '<p>조회된 데이터가 없습니다.</p>';
+                    return;
+                }
+
+                items.forEach(cafe => {
+                    const div = document.createElement('div');
+                    div.className = 'cafe-card';
+                    // API 응답 필드명(FCLTY_NM, RDMN_ADDR 등)은 실제 API 명세서에 맞게 변경해야 합니다.
+                    div.innerHTML = `
+                        <div class="cafe-name">${cafe.FCLTY_NM || cafe.title || '이름 없음'}</div>
+                        <div class="cafe-addr">${cafe.RDNM_ADDR || cafe.address || '주소 정보 없음'}</div>
+                    `;
+                    listDiv.appendChild(div);
+                });
+            } catch (error) {
+                document.getElementById('cafe-list').innerText = '데이터를 불러오는데 실패했습니다.';
+                console.error(error);
+            }
+        }
+        loadCafes();
+    </script>
+</body>
+</html>
