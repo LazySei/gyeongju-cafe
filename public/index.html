@@ -21,7 +21,6 @@
                 const response = await fetch('/api/cafes');
                 const data = await response.json();
                 
-                // 데이터 경로 확인 (이미지 응답 구조 반영)
                 const items = data.response?.body?.items?.item || [];
                 const listDiv = document.getElementById('cafe-list');
                 listDiv.innerHTML = '';
@@ -35,12 +34,18 @@
                     const div = document.createElement('div');
                     div.className = 'cafe-card';
                     
-                    // 💡 수정됨: 실제 API 응답 필드명(CON_TITLE, CON_ADDRESS) 적용
-                    // 영업시간 등 추가 정보(CON_SUMMARY)가 있다면 함께 표시하도록 추가
+                    // 💡 요청하신 3가지 필드(이미지, 내용, 홈페이지) 추가
+                    // 이미지가 깨질 경우(엑스박스) 숨기기 위해 onerror 속성 추가
                     div.innerHTML = `
+                        ${cafe.CON_IMGFILENAME ? `<img src="${cafe.CON_IMGFILENAME}" alt="${cafe.CON_TITLE}" class="cafe-img" onerror="this.style.display='none'">` : ''}
                         <div class="cafe-name">${cafe.CON_TITLE || '이름 없음'}</div>
                         <div class="cafe-addr">📍 ${cafe.CON_ADDRESS || '주소 정보 없음'}</div>
+                        
                         ${cafe.CON_SUMMARY ? `<div class="cafe-summary">${cafe.CON_SUMMARY}</div>` : ''}
+                        
+                        ${cafe.CON_CONTENT ? `<div class="cafe-content">${cafe.CON_CONTENT}</div>` : ''}
+                        
+                        ${cafe.CON_HOMEPAGE ? `<a href="${cafe.CON_HOMEPAGE}" target="_blank" class="cafe-link">🌐 홈페이지 방문하기</a>` : ''}
                     `;
                     listDiv.appendChild(div);
                 });
