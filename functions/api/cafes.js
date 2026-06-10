@@ -16,11 +16,11 @@ export async function onRequest(context) {
         const textData = await response.text();
         
         // 공공데이터포털이 JSON이 아닌 텍스트(Unexpected errors 등)나 XML 에러를 반환한 경우 처리
-        if (textData.includes('Unexpected errors') || textData.startsWith('<')) {
+ if (textData.includes('Unexpected errors') || textData.includes('502') || textData.startsWith('<')) {
              return new Response(JSON.stringify({ 
-                error: "공공데이터포털 서버 요청 실패", 
+                error: "공공데이터포털 서버 통신 오류", 
                 details: textData.trim(),
-                requestUrl: url // 디버깅을 위해 요청한 URL도 함께 출력
+                requestUrl: url // 💡 디버깅용: 실제 요청한 URL
             }), { 
                 status: 502,
                 headers: { "Content-Type": "application/json;charset=UTF-8" }
