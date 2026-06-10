@@ -9,7 +9,7 @@ export async function onRequest(context) {
     const baseUrl = "https://apis.data.go.kr/5050000/cafeInfoService/getCafeInfo"; 
     
     // API 키 인코딩 처리
-    const url = `${baseUrl}?serviceKey=${encodeURIComponent(API_KEY)}&pageNo=1&numOfRows=50`;
+    const url = `${baseUrl}?serviceKey=${encodeURIComponent(API_KEY)}&pageNo=1&numOfRows=10`;
 
     try {
         const response = await fetch(url);
