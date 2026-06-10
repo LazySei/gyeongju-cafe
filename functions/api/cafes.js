@@ -9,7 +9,7 @@ export async function onRequest(context) {
     
     // ⚠️ 주의: API 명세서를 확인하여 baseUrl 뒤에 '/getCafeList' 같은 오퍼레이션 명이 필요한지 반드시 확인하세요.
     // 또한 JSON 요청 파라미터가 'type=json'인지, '_type=json'인지 명세서 확인이 필요합니다.
-    const url = `${baseUrl}?serviceKey=${API_KEY}&pageNo=1&numOfRows=50&type=json`;
+    const url = `${baseUrl}?serviceKey=${API_KEY}&pageNo=1&numOfRows=1000&type=json`;
 
     try {
         const response = await fetch(url, {
