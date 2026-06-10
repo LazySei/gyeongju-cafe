@@ -18,11 +18,10 @@
     <script>
         async function loadCafes() {
             try {
-                // Cloudflare Functions로 만든 내부 API 호출
                 const response = await fetch('/api/cafes');
                 const data = await response.json();
                 
-                // 공공데이터 JSON 구조에 맞게 수정 필요 (일반적인 공공데이터 포맷 기준)
+                // 데이터 경로 확인 (이미지 응답 구조 반영)
                 const items = data.response?.body?.items?.item || [];
                 const listDiv = document.getElementById('cafe-list');
                 listDiv.innerHTML = '';
@@ -35,10 +34,13 @@
                 items.forEach(cafe => {
                     const div = document.createElement('div');
                     div.className = 'cafe-card';
-                    // API 응답 필드명(FCLTY_NM, RDMN_ADDR 등)은 실제 API 명세서에 맞게 변경해야 합니다.
+                    
+                    // 💡 수정됨: 실제 API 응답 필드명(CON_TITLE, CON_ADDRESS) 적용
+                    // 영업시간 등 추가 정보(CON_SUMMARY)가 있다면 함께 표시하도록 추가
                     div.innerHTML = `
-                        <div class="cafe-name">${cafe.FCLTY_NM || cafe.title || '이름 없음'}</div>
-                        <div class="cafe-addr">${cafe.RDNM_ADDR || cafe.address || '주소 정보 없음'}</div>
+                        <div class="cafe-name">${cafe.CON_TITLE || '이름 없음'}</div>
+                        <div class="cafe-addr">📍 ${cafe.CON_ADDRESS || '주소 정보 없음'}</div>
+                        ${cafe.CON_SUMMARY ? `<div class="cafe-summary">${cafe.CON_SUMMARY}</div>` : ''}
                     `;
                     listDiv.appendChild(div);
                 });
